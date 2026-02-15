@@ -1,0 +1,1213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>PhoneCam</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com"/>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@300;400;600;700;900&display=swap" rel="stylesheet"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0a;
+      --surface: #111;
+      --border: #2a2a2a;
+      --border-bright: #444;
+      --text: #e8e8e8;
+      --text-dim: #666;
+      --accent: #e8ff00;
+      --accent-dim: #b8cc00;
+      --red: #ff3030;
+      --green: #00ff88;
+      --mono: 'Share Tech Mono', monospace;
+      --display: 'Barlow Condensed', sans-serif;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--display);
+      font-weight: 400;
+      letter-spacing: 0.02em;
+      overflow-x: hidden;
+    }
+
+    /* ── Scanline overlay ── */
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,0.08) 2px,
+        rgba(0,0,0,0.08) 4px
+      );
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* ── Layout ── */
+    #app {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 32px;
+      border-bottom: 1px solid var(--border);
+      position: sticky; top: 0;
+      background: var(--bg);
+      z-index: 100;
+    }
+
+    .logo {
+      font-family: var(--display);
+      font-weight: 900;
+      font-size: 1.6rem;
+      letter-spacing: -0.02em;
+      color: var(--text);
+    }
+    .logo span { color: var(--accent); }
+
+    .status-dot {
+      display: flex; align-items: center; gap: 8px;
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      color: var(--text-dim);
+      text-transform: uppercase;
+    }
+    .dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--text-dim);
+      transition: all 0.3s;
+    }
+    .dot.online { background: var(--green); box-shadow: 0 0 6px var(--green); animation: pulse-dot 2s infinite; }
+    .dot.error { background: var(--red); }
+
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    /* ── Main ── */
+    main {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 24px;
+    }
+
+    /* ── Cards ── */
+    .card {
+      width: 100%;
+      max-width: 480px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: var(--accent);
+    }
+
+    .card-header {
+      padding: 24px 28px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .card-label {
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      margin-bottom: 6px;
+    }
+
+    .card-title {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      line-height: 1;
+    }
+
+    .card-body { padding: 28px; }
+
+    /* ── Buttons ── */
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 16px 24px;
+      border: 1px solid var(--border-bright);
+      background: transparent;
+      color: var(--text);
+      font-family: var(--display);
+      font-size: 1rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.15s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: var(--accent);
+      transform: translateX(-100%);
+      transition: transform 0.2s;
+      z-index: 0;
+    }
+
+    .btn span { position: relative; z-index: 1; }
+
+    .btn:hover::after { transform: translateX(0); }
+    .btn:hover { color: #000; border-color: var(--accent); }
+    .btn:active { transform: scale(0.99); }
+    .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+    .btn:disabled::after { display: none; }
+
+    .btn-danger {
+      border-color: var(--red);
+    }
+    .btn-danger::after { background: var(--red); }
+    .btn-danger:hover { color: #fff; }
+
+    .btn-secondary {
+      border-color: var(--border);
+      color: var(--text-dim);
+      font-weight: 400;
+      font-size: 0.85rem;
+    }
+    .btn-secondary::after { background: var(--border-bright); }
+    .btn-secondary:hover { color: var(--text); }
+
+    .btn-sm {
+      padding: 10px 18px;
+      font-size: 0.8rem;
+    }
+
+    /* ── Input ── */
+    .input-group { position: relative; margin-bottom: 16px; }
+
+    .input-label {
+      font-family: var(--mono);
+      font-size: 0.65rem;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      display: block;
+      margin-bottom: 8px;
+    }
+
+    input.code-input {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border-bright);
+      color: var(--accent);
+      font-family: var(--mono);
+      font-size: 2.4rem;
+      font-weight: 400;
+      letter-spacing: 0.3em;
+      padding: 16px 20px;
+      outline: none;
+      transition: border-color 0.2s;
+      text-align: center;
+    }
+
+    input.code-input:focus { border-color: var(--accent); }
+    input.code-input::placeholder { color: var(--border-bright); }
+
+    /* ── Code display ── */
+    .code-display {
+      background: var(--bg);
+      border: 1px solid var(--border-bright);
+      padding: 20px;
+      text-align: center;
+      margin-bottom: 24px;
+      position: relative;
+    }
+
+    .code-display-label {
+      font-family: var(--mono);
+      font-size: 0.6rem;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      margin-bottom: 8px;
+    }
+
+    .code-value {
+      font-family: var(--mono);
+      font-size: 3.5rem;
+      color: var(--accent);
+      letter-spacing: 0.4em;
+      line-height: 1;
+      font-weight: 400;
+    }
+
+    .code-value.loading {
+      animation: blink 1s step-end infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.2; }
+    }
+
+    /* ── Status messages ── */
+    .status-msg {
+      font-family: var(--mono);
+      font-size: 0.72rem;
+      padding: 12px 16px;
+      border-left: 2px solid;
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+    .status-msg.info { border-color: var(--text-dim); color: var(--text-dim); background: rgba(255,255,255,0.02); }
+    .status-msg.success { border-color: var(--green); color: var(--green); background: rgba(0,255,136,0.04); }
+    .status-msg.error { border-color: var(--red); color: var(--red); background: rgba(255,48,48,0.04); }
+    .status-msg.warn { border-color: var(--accent); color: var(--accent); background: rgba(232,255,0,0.04); }
+
+    /* ── Waiting indicator ── */
+    .waiting {
+      display: flex; align-items: center; gap: 12px;
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      color: var(--text-dim);
+      margin-top: 20px;
+    }
+    .waiting-bar {
+      flex: 1;
+      height: 2px;
+      background: var(--border);
+      position: relative;
+      overflow: hidden;
+    }
+    .waiting-bar::after {
+      content: '';
+      position: absolute;
+      top: 0; left: -40%;
+      width: 40%;
+      height: 100%;
+      background: var(--accent);
+      animation: scan 1.6s linear infinite;
+    }
+    @keyframes scan {
+      to { left: 100%; }
+    }
+
+    /* ── Video view ── */
+    #view-laptop-stream {
+      width: 100%;
+      max-width: 900px;
+    }
+
+    .video-wrapper {
+      position: relative;
+      background: #000;
+      border: 1px solid var(--border);
+      aspect-ratio: 16/9;
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+
+    video#remoteVideo {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+
+    .video-overlay {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column; gap: 12px;
+      background: var(--bg);
+      transition: opacity 0.5s;
+    }
+    .video-overlay.hidden { opacity: 0; pointer-events: none; }
+
+    .video-overlay-icon {
+      font-size: 3rem;
+      filter: grayscale(1);
+      opacity: 0.3;
+    }
+    .video-overlay-text {
+      font-family: var(--mono);
+      font-size: 0.7rem;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+    }
+
+    .video-hud {
+      position: absolute;
+      top: 12px; left: 12px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .hud-badge {
+      font-family: var(--mono);
+      font-size: 0.6rem;
+      background: rgba(0,0,0,0.7);
+      padding: 4px 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+    .hud-live {
+      color: var(--red);
+      border: 1px solid var(--red);
+      display: flex; align-items: center; gap: 5px;
+    }
+    .hud-live::before {
+      content: '';
+      width: 5px; height: 5px; border-radius: 50%;
+      background: var(--red);
+      animation: pulse-dot 1s infinite;
+    }
+    .hud-code { color: var(--text-dim); border: 1px solid var(--border); }
+
+    .stream-controls {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    /* ── Mobile camera view ── */
+    #view-mobile-stream {
+      width: 100%;
+      max-width: 400px;
+    }
+
+    .camera-preview {
+      position: relative;
+      aspect-ratio: 9/16;
+      background: #000;
+      border: 1px solid var(--border);
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+
+    video#localVideo {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      transform: scaleX(-1);
+    }
+
+    .camera-hud {
+      position: absolute;
+      top: 12px; left: 12px; right: 12px;
+      display: flex; justify-content: space-between; align-items: center;
+    }
+
+    .camera-corner {
+      position: absolute;
+      width: 20px; height: 20px;
+    }
+    .camera-corner.tl { top: 8px; left: 8px; border-top: 2px solid var(--accent); border-left: 2px solid var(--accent); }
+    .camera-corner.tr { top: 8px; right: 8px; border-top: 2px solid var(--accent); border-right: 2px solid var(--accent); }
+    .camera-corner.bl { bottom: 8px; left: 8px; border-bottom: 2px solid var(--accent); border-left: 2px solid var(--accent); }
+    .camera-corner.br { bottom: 8px; right: 8px; border-bottom: 2px solid var(--accent); border-right: 2px solid var(--accent); }
+
+    /* ── Divider ── */
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 20px 0;
+    }
+
+    /* ── Device switch ── */
+    .device-switch {
+      display: flex;
+      border: 1px solid var(--border);
+      margin-bottom: 28px;
+    }
+    .device-btn {
+      flex: 1;
+      padding: 12px;
+      background: transparent;
+      border: none;
+      color: var(--text-dim);
+      font-family: var(--display);
+      font-size: 0.85rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .device-btn.active {
+      background: var(--accent);
+      color: #000;
+    }
+
+    /* ── Footer ── */
+    footer {
+      padding: 16px 32px;
+      border-top: 1px solid var(--border);
+      font-family: var(--mono);
+      font-size: 0.6rem;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* ── Views ── */
+    .view { display: none; }
+    .view.active { display: flex; flex-direction: column; align-items: center; width: 100%; }
+
+    /* ── Animations ── */
+    @keyframes fade-in-up {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .animate-in { animation: fade-in-up 0.4s ease forwards; }
+
+    /* ── QR Code ── */
+    .qr-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .qr-box {
+      background: #fff;
+      padding: 14px;
+      border: 1px solid var(--border-bright);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+
+    .qr-box canvas { display: block; }
+
+    .qr-placeholder {
+      width: 160px; height: 160px;
+      background: var(--bg);
+      border: 1px dashed var(--border-bright);
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--mono);
+      font-size: 0.6rem;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+
+    .qr-label {
+      font-family: var(--mono);
+      font-size: 0.62rem;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      text-align: center;
+    }
+
+    .qr-or {
+      display: flex; align-items: center; gap: 10px;
+      margin: 4px 0;
+      font-family: var(--mono);
+      font-size: 0.6rem;
+      color: var(--text-dim);
+    }
+    .qr-or::before, .qr-or::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* ── Mobile responsive ── */
+    @media (max-width: 600px) {
+      header { padding: 14px 18px; }
+      .card-body { padding: 20px; }
+      .code-value { font-size: 2.6rem; }
+      footer { flex-direction: column; gap: 6px; }
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="logo">PHONE<span>CAM</span></div>
+    <div class="status-dot">
+      <div class="dot" id="wsStatus"></div>
+      <span id="wsStatusText">CONNECTING</span>
+    </div>
+  </header>
+
+  <main>
+
+    <!-- ══════════════════════════════════════════════════════ VIEW: HOME -->
+    <div id="view-home" class="view active">
+      <div class="card animate-in" style="max-width: 420px; width: 100%;">
+        <div class="card-header">
+          <div class="card-label">// select device</div>
+          <div class="card-title">WHAT ARE YOU<br>USING RIGHT NOW?</div>
+        </div>
+        <div class="card-body">
+          <div style="margin-bottom: 12px; font-family: var(--mono); font-size: 0.7rem; color: var(--text-dim);">
+            LAPTOP / DESKTOP receives the stream.<br>
+            PHONE / TABLET sends the camera.
+          </div>
+          <hr class="divider"/>
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            <button class="btn" id="btnGoLaptop"><span>💻 &nbsp; I'M ON LAPTOP / DESKTOP</span></button>
+            <button class="btn" id="btnGoMobile"><span>📱 &nbsp; I'M ON PHONE / TABLET</span></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════ VIEW: LAPTOP WAIT -->
+    <div id="view-laptop-wait" class="view">
+      <div class="card animate-in">
+        <div class="card-header">
+          <div class="card-label">// laptop — step 1</div>
+          <div class="card-title">YOUR SESSION<br>CODE</div>
+        </div>
+        <div class="card-body">
+          <div class="qr-wrapper">
+            <div class="qr-label">// scan with phone camera to connect instantly</div>
+            <div class="qr-box">
+              <div id="qrPlaceholder" class="qr-placeholder">generating…</div>
+              <div id="qrCode" style="display:none"></div>
+            </div>
+          </div>
+          <div class="qr-or">OR ENTER CODE MANUALLY</div>
+          <div class="code-display">
+            <div class="code-display-label">// 6-digit session code</div>
+            <div class="code-value loading" id="sessionCode">------</div>
+          </div>
+          <div class="status-msg info" id="laptopStatus">⬡ &nbsp; Generating session…</div>
+          <div class="waiting" id="waitingIndicator" style="display:none">
+            <span>WAITING FOR PHONE</span>
+            <div class="waiting-bar"></div>
+          </div>
+          <hr class="divider"/>
+          <button class="btn btn-secondary btn-sm" id="btnLaptopBack"><span>← BACK</span></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════ VIEW: MOBILE JOIN -->
+    <div id="view-mobile-join" class="view">
+      <div class="card animate-in">
+        <div class="card-header">
+          <div class="card-label">// phone — step 1</div>
+          <div class="card-title">ENTER SESSION<br>CODE</div>
+        </div>
+        <div class="card-body">
+          <div class="input-group">
+            <label class="input-label" for="codeInput">// 6-digit code from laptop</label>
+            <input
+              class="code-input"
+              id="codeInput"
+              type="tel"
+              maxlength="6"
+              placeholder="000000"
+              autocomplete="off"
+              inputmode="numeric"
+            />
+          </div>
+          <div class="status-msg error" id="joinError" style="display:none"></div>
+          <button class="btn" id="btnJoin"><span>CONNECT →</span></button>
+          <hr class="divider"/>
+          <button class="btn btn-secondary btn-sm" id="btnMobileBack"><span>← BACK</span></button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════════════════ VIEW: LAPTOP STREAMING -->
+    <div id="view-laptop-stream" class="view">
+      <div style="width: 100%;" class="animate-in">
+        <div class="video-wrapper">
+          <video id="remoteVideo" autoplay playsinline></video>
+          <div class="video-overlay" id="videoOverlay">
+            <div class="video-overlay-icon">📷</div>
+            <div class="video-overlay-text">Waiting for camera stream…</div>
+          </div>
+          <div class="video-hud">
+            <div class="hud-badge hud-live" id="liveBadge" style="display:none">LIVE</div>
+            <div class="hud-badge hud-code" id="hudCode"></div>
+          </div>
+        </div>
+        <div class="stream-controls">
+          <button class="btn btn-danger btn-sm" id="btnLaptopDisconnect"><span>⏹ DISCONNECT</span></button>
+          <button class="btn btn-secondary btn-sm" id="btnLaptopCopyCode"><span>⎘ COPY CODE</span></button>
+        </div>
+        <div class="status-msg info" id="streamStatus" style="margin-top: 14px;"></div>
+      </div>
+    </div>
+
+    <!-- ═════════════════════════════════════════════ VIEW: MOBILE STREAMING -->
+    <div id="view-mobile-stream" class="view">
+      <div style="width:100%;" class="animate-in">
+        <div class="camera-preview">
+          <video id="localVideo" autoplay playsinline muted></video>
+          <div class="camera-corner tl"></div>
+          <div class="camera-corner tr"></div>
+          <div class="camera-corner bl"></div>
+          <div class="camera-corner br"></div>
+          <div class="camera-hud">
+            <div class="hud-badge hud-live" id="mLiveBadge">STREAMING</div>
+            <div class="hud-badge hud-code" id="mHudCode"></div>
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+          <button class="btn" id="btnFlipCamera"><span>🔄 &nbsp; FLIP CAMERA</span></button>
+          <button class="btn btn-danger btn-sm" id="btnMobileStop"><span>⏹ STOP &amp; DISCONNECT</span></button>
+        </div>
+        <div class="status-msg info" id="mobileStreamStatus" style="margin-top: 14px;"></div>
+      </div>
+    </div>
+
+  </main>
+
+  <footer>
+    <span>PHONECAM // WebRTC P2P</span>
+    <span>VIDEO NEVER TOUCHES SERVER</span>
+  </footer>
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════════════════════
+// CONFIG
+// ══════════════════════════════════════════════════════════════════════════
+
+const ICE_SERVERS = [
+  { urls: 'stun:stun.l.google.com:19302' },
+  { urls: 'stun:stun1.l.google.com:19302' },
+  { urls: 'stun:stun2.l.google.com:19302' },
+  { urls: 'stun:stun3.l.google.com:19302' },
+  { urls: 'stun:stun4.l.google.com:19302' },
+  { urls: 'stun:stun.cloudflare.com:3478' },
+  { urls: 'stun:stun.relay.metered.ca:80' },
+  {
+    urls: 'turn:openrelay.metered.ca:80',
+    username: 'openrelayproject',
+    credential: 'openrelayproject'
+  },
+  {
+    urls: 'turn:openrelay.metered.ca:443',
+    username: 'openrelayproject',
+    credential: 'openrelayproject'
+  },
+  {
+    urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+    username: 'openrelayproject',
+    credential: 'openrelayproject'
+  },
+  {
+    urls: 'turns:openrelay.metered.ca:443?transport=tcp',
+    username: 'openrelayproject',
+    credential: 'openrelayproject'
+  }
+];
+
+// ══════════════════════════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════════════════════════
+
+let ws = null;
+let pc = null;
+let localStream = null;
+let currentFacingMode = 'environment';
+let sessionCode = null;
+let role = null; // 'laptop' | 'mobile'
+let heartbeatInterval = null;
+
+// ══════════════════════════════════════════════════════════════════════════
+// VIEWS
+// ══════════════════════════════════════════════════════════════════════════
+
+function showView(id) {
+  document.querySelectorAll('.view').forEach(v => {
+    v.classList.remove('active');
+    v.querySelectorAll('.animate-in').forEach(el => { el.style.animation = 'none'; });
+  });
+  const el = document.getElementById(id);
+  el.classList.add('active');
+  requestAnimationFrame(() => {
+    el.querySelectorAll('.animate-in').forEach(el => {
+      el.style.animation = '';
+    });
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// WEBSOCKET
+// ══════════════════════════════════════════════════════════════════════════
+
+function wsUrl() {
+  const proto = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  return `${proto}//${location.host}`;
+}
+
+function connectWS() {
+  const dot = document.getElementById('wsStatus');
+  const txt = document.getElementById('wsStatusText');
+
+  dot.className = 'dot';
+  txt.textContent = 'CONNECTING';
+
+  ws = new WebSocket(wsUrl());
+
+  ws.onopen = () => {
+    dot.className = 'dot online';
+    txt.textContent = 'CONNECTED';
+    startHeartbeat();
+  };
+
+  ws.onclose = () => {
+    dot.className = 'dot error';
+    txt.textContent = 'OFFLINE';
+    stopHeartbeat();
+    setTimeout(connectWS, 3000);
+  };
+
+  ws.onerror = () => {
+    dot.className = 'dot error';
+    txt.textContent = 'ERROR';
+  };
+
+  ws.onmessage = (e) => {
+    let msg;
+    try { msg = JSON.parse(e.data); } catch { return; }
+    handleServerMsg(msg);
+  };
+}
+
+function wsSend(obj) {
+  if (ws && ws.readyState === WebSocket.OPEN) ws.send(JSON.stringify(obj));
+}
+
+function startHeartbeat() {
+  stopHeartbeat();
+  heartbeatInterval = setInterval(() => wsSend({ type: 'ping' }), 20000);
+}
+function stopHeartbeat() {
+  clearInterval(heartbeatInterval);
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// SERVER MESSAGE HANDLER
+// ══════════════════════════════════════════════════════════════════════════
+
+async function handleServerMsg(msg) {
+  switch (msg.type) {
+
+    case 'session-created':
+      sessionCode = msg.code;
+      document.getElementById('sessionCode').textContent = msg.code;
+      document.getElementById('sessionCode').classList.remove('loading');
+      document.getElementById('hudCode').textContent = msg.code;
+      setLaptopStatus('success', `✓ &nbsp; Session ready. Scan QR or enter code on your phone.`);
+      document.getElementById('waitingIndicator').style.display = 'flex';
+      generateQR(msg.code);
+      break;
+
+    case 'peer-joined':
+      // laptop side: mobile has joined, initiate WebRTC offer
+      setLaptopStatus('warn', '⬡ &nbsp; Phone connected — establishing video link…');
+      document.getElementById('waitingIndicator').style.display = 'none';
+      await initPCLaptop();
+      break;
+
+    case 'session-joined':
+      // mobile side: successfully joined
+      sessionCode = msg.code;
+      document.getElementById('mHudCode').textContent = msg.code;
+      await initPCMobile();
+      break;
+
+    case 'error':
+      if (role === 'mobile') {
+        document.getElementById('joinError').textContent = `⚠ ${msg.message}`;
+        document.getElementById('joinError').style.display = 'block';
+        document.getElementById('btnJoin').disabled = false;
+      }
+      break;
+
+    case 'offer':
+      await handleOffer(msg);
+      break;
+
+    case 'answer':
+      await pc.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp: msg.sdp }));
+      break;
+
+    case 'ice-candidate':
+      if (msg.candidate) {
+        try { await pc.addIceCandidate(new RTCIceCandidate(msg.candidate)); } catch {}
+      }
+      break;
+
+    case 'peer-disconnected':
+      handlePeerDisconnect();
+      break;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// WEBRTC — LAPTOP (receiver, initiator)
+// ══════════════════════════════════════════════════════════════════════════
+
+async function initPCLaptop() {
+  pc = createPeerConnection('laptop');
+
+  // Add transceiver to receive video
+  pc.addTransceiver('video', { direction: 'recvonly' });
+
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+
+  // Wait for ICE gathering to complete before sending offer
+  // This bundles all candidates into the offer (better for relayed connections)
+  await waitForICEGathering(pc);
+
+  wsSend({ type: 'offer', sdp: pc.localDescription.sdp });
+  setLaptopStatus('warn', '⬡ &nbsp; Waiting for camera negotiation…');
+  showView('view-laptop-stream');
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// WEBRTC — MOBILE (sender, answerer)
+// ══════════════════════════════════════════════════════════════════════════
+
+async function initPCMobile() {
+  // Get camera first
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: currentFacingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
+      audio: false
+    });
+    document.getElementById('localVideo').srcObject = localStream;
+    setMobileStatus('success', '✓ &nbsp; Camera on. Connecting to laptop…');
+    showView('view-mobile-stream');
+  } catch (err) {
+    document.getElementById('joinError').textContent = `⚠ Camera access denied: ${err.message}`;
+    document.getElementById('joinError').style.display = 'block';
+    return;
+  }
+
+  pc = createPeerConnection('mobile');
+  localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+}
+
+async function handleOffer(msg) {
+  // Mobile receives offer, sends answer
+  await pc.setRemoteDescription(new RTCSessionDescription({ type: 'offer', sdp: msg.sdp }));
+  const answer = await pc.createAnswer();
+  await pc.setLocalDescription(answer);
+
+  // Wait for ICE gathering to complete before sending answer
+  await waitForICEGathering(pc);
+
+  wsSend({ type: 'answer', sdp: pc.localDescription.sdp });
+  setMobileStatus('success', '✓ &nbsp; Streaming to laptop…');
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// ICE GATHERING HELPER
+// ══════════════════════════════════════════════════════════════════════════
+
+function waitForICEGathering(pc) {
+  return new Promise((resolve) => {
+    if (pc.iceGatheringState === 'complete') { resolve(); return; }
+    const check = () => {
+      if (pc.iceGatheringState === 'complete') {
+        pc.removeEventListener('icegatheringstatechange', check);
+        resolve();
+      }
+    };
+    pc.addEventListener('icegatheringstatechange', check);
+    // Fallback timeout — don't wait forever
+    setTimeout(resolve, 4000);
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// PEER CONNECTION FACTORY
+// ══════════════════════════════════════════════════════════════════════════
+
+function createPeerConnection(forRole) {
+  const conn = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+
+  conn.onicecandidate = (e) => {
+    if (e.candidate) wsSend({ type: 'ice-candidate', candidate: e.candidate });
+  };
+
+  conn.ontrack = (e) => {
+    if (forRole === 'laptop' && e.streams[0]) {
+      const video = document.getElementById('remoteVideo');
+      video.srcObject = e.streams[0];
+      document.getElementById('videoOverlay').classList.add('hidden');
+      document.getElementById('liveBadge').style.display = 'flex';
+      setLaptopStatus('success', '✓ &nbsp; Live stream active. Video is P2P — server sees nothing.');
+    }
+  };
+
+  conn.onconnectionstatechange = () => {
+    const state = conn.connectionState;
+    console.log(`[PhoneCam] connectionState → ${state}`);
+    if (forRole === 'laptop') {
+      const msgs = {
+        connecting: ['warn', '⬡ &nbsp; Establishing P2P connection…'],
+        connected:  ['success', '✓ &nbsp; Connected. Video is streaming peer-to-peer.'],
+        disconnected: ['error', '⚠ &nbsp; Connection lost. Phone may have disconnected.'],
+        failed: ['error', '✗ &nbsp; Connection failed. Network may be blocking P2P.'],
+      };
+      if (msgs[state]) setLaptopStatus(...msgs[state]);
+    }
+    if (forRole === 'mobile') {
+      if (state === 'connected') setMobileStatus('success', '✓ &nbsp; Connected to laptop. Camera streaming live.');
+      if (state === 'disconnected' || state === 'failed') setMobileStatus('error', '⚠ &nbsp; Lost connection to laptop.');
+    }
+  };
+
+  conn.oniceconnectionstatechange = () => {
+    console.log(`[PhoneCam] iceConnectionState → ${conn.iceConnectionState}`);
+    if (forRole === 'laptop') {
+      if (conn.iceConnectionState === 'failed') {
+        setLaptopStatus('error', '✗ &nbsp; ICE failed — TURN server unreachable. Try refreshing.');
+      }
+      if (conn.iceConnectionState === 'checking') {
+        setLaptopStatus('warn', '⬡ &nbsp; Checking network path to phone…');
+      }
+    }
+  };
+
+  conn.onicegatheringstatechange = () => {
+    console.log(`[PhoneCam] iceGatheringState → ${conn.iceGatheringState}`);
+  };
+
+  return conn;
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// CLEANUP
+// ══════════════════════════════════════════════════════════════════════════
+
+function stopLocalStream() {
+  if (localStream) { localStream.getTracks().forEach(t => t.stop()); localStream = null; }
+}
+
+function closePC() {
+  if (pc) { pc.close(); pc = null; }
+}
+
+function resetToHome() {
+  stopLocalStream();
+  closePC();
+  sessionCode = null;
+  role = null;
+  document.getElementById('remoteVideo').srcObject = null;
+  document.getElementById('localVideo').srcObject = null;
+  document.getElementById('videoOverlay').classList.remove('hidden');
+  document.getElementById('liveBadge').style.display = 'none';
+  document.getElementById('sessionCode').textContent = '------';
+  document.getElementById('sessionCode').classList.add('loading');
+  document.getElementById('codeInput').value = '';
+  document.getElementById('joinError').style.display = 'none';
+  showView('view-home');
+}
+
+function handlePeerDisconnect() {
+  if (role === 'laptop') {
+    setLaptopStatus('error', '⚠ &nbsp; Phone disconnected. Session ended.');
+    document.getElementById('videoOverlay').classList.remove('hidden');
+    document.getElementById('liveBadge').style.display = 'none';
+    closePC();
+  }
+  if (role === 'mobile') {
+    setMobileStatus('error', '⚠ &nbsp; Laptop disconnected.');
+    stopLocalStream();
+    closePC();
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// STATUS HELPERS
+// ══════════════════════════════════════════════════════════════════════════
+
+function setLaptopStatus(type, html) {
+  const el = document.getElementById('laptopStatus');
+  el.className = `status-msg ${type}`;
+  el.innerHTML = html;
+}
+
+function setMobileStatus(type, html) {
+  const el = document.getElementById('mobileStreamStatus');
+  el.className = `status-msg ${type}`;
+  el.innerHTML = html;
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// CAMERA FLIP
+// ══════════════════════════════════════════════════════════════════════════
+
+async function flipCamera() {
+  currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment';
+  stopLocalStream();
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: currentFacingMode, width: { ideal: 1280 }, height: { ideal: 720 } },
+      audio: false
+    });
+    document.getElementById('localVideo').srcObject = localStream;
+    if (pc) {
+      const sender = pc.getSenders().find(s => s.track?.kind === 'video');
+      if (sender) sender.replaceTrack(localStream.getVideoTracks()[0]);
+    }
+  } catch { /* revert */ currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment'; }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// EVENT BINDINGS
+// ══════════════════════════════════════════════════════════════════════════
+
+document.getElementById('btnGoLaptop').onclick = () => {
+  role = 'laptop';
+  showView('view-laptop-wait');
+  wsSend({ type: 'create-session' });
+};
+
+document.getElementById('btnGoMobile').onclick = () => {
+  role = 'mobile';
+  showView('view-mobile-join');
+};
+
+document.getElementById('btnJoin').onclick = () => {
+  const code = document.getElementById('codeInput').value.trim();
+  if (code.length !== 6 || !/^\d{6}$/.test(code)) {
+    document.getElementById('joinError').textContent = '⚠ Please enter a valid 6-digit code.';
+    document.getElementById('joinError').style.display = 'block';
+    return;
+  }
+  document.getElementById('joinError').style.display = 'none';
+  document.getElementById('btnJoin').disabled = true;
+  wsSend({ type: 'join-session', code });
+};
+
+document.getElementById('codeInput').addEventListener('input', (e) => {
+  e.target.value = e.target.value.replace(/\D/g, '').slice(0, 6);
+});
+
+document.getElementById('codeInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') document.getElementById('btnJoin').click();
+});
+
+document.getElementById('btnLaptopBack').onclick = () => {
+  resetToHome();
+};
+
+document.getElementById('btnMobileBack').onclick = () => {
+  resetToHome();
+};
+
+document.getElementById('btnLaptopDisconnect').onclick = () => {
+  resetToHome();
+};
+
+document.getElementById('btnMobileStop').onclick = () => {
+  resetToHome();
+};
+
+document.getElementById('btnFlipCamera').onclick = flipCamera;
+
+document.getElementById('btnLaptopCopyCode').onclick = () => {
+  if (sessionCode) {
+    navigator.clipboard.writeText(sessionCode).then(() => {
+      document.getElementById('btnLaptopCopyCode').querySelector('span').textContent = '✓ COPIED';
+      setTimeout(() => {
+        document.getElementById('btnLaptopCopyCode').querySelector('span').textContent = '⎘ COPY CODE';
+      }, 2000);
+    });
+  }
+};
+
+// ══════════════════════════════════════════════════════════════════════════
+// QR CODE GENERATION
+// ══════════════════════════════════════════════════════════════════════════
+
+function generateQR(code) {
+  const placeholder = document.getElementById('qrPlaceholder');
+  const container   = document.getElementById('qrCode');
+
+  // Build the URL that phone will open — includes ?join=CODE so it auto-fills
+  const url = `${location.origin}${location.pathname}?join=${code}`;
+
+  placeholder.style.display = 'none';
+  container.style.display = 'block';
+  container.innerHTML = '';
+
+  new QRCode(container, {
+    text: url,
+    width: 160,
+    height: 160,
+    colorDark: '#000000',
+    colorLight: '#ffffff',
+    correctLevel: QRCode.CorrectLevel.M
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// AUTO-JOIN FROM QR SCAN (?join=XXXXXX in URL)
+// ══════════════════════════════════════════════════════════════════════════
+
+function checkAutoJoin() {
+  const params = new URLSearchParams(location.search);
+  const code = params.get('join');
+  if (!code || !/^\d{6}$/.test(code)) return;
+
+  // Switch to mobile join view and auto-fill + submit
+  role = 'mobile';
+  showView('view-mobile-join');
+  document.getElementById('codeInput').value = code;
+
+  // Wait for WS to be open, then join
+  function tryJoin() {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      document.getElementById('btnJoin').disabled = true;
+      wsSend({ type: 'join-session', code });
+      // Clean URL so refreshing doesn't re-trigger
+      history.replaceState({}, '', location.pathname);
+    } else {
+      setTimeout(tryJoin, 200);
+    }
+  }
+  tryJoin();
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// BOOT
+// ══════════════════════════════════════════════════════════════════════════
+
+connectWS();
+checkAutoJoin();
+</script>
+</body>
+</html>

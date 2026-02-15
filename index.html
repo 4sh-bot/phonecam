@@ -551,18 +551,30 @@
 </div>
 <script>
 const ICE_SERVERS = [
-  { urls: 'stun:stun.l.google.com:19302' },
-  { urls: 'stun:stun1.l.google.com:19302' },
-  { urls: 'stun:stun2.l.google.com:19302' },
-  { urls: 'stun:stun3.l.google.com:19302' },
-  { urls: 'stun:stun4.l.google.com:19302' },
-  { urls: 'stun:stun.cloudflare.com:3478' },
-  { urls: 'stun:stun.relay.metered.ca:80' },
-  { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
-  { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
-  { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
-  { urls: 'turns:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
+  { urls: "stun:stun.l.google.com:19302" },
+
+  {
+    urls: "turn:global.relay.metered.ca:3478",
+    username: "6e0a1496ced0367138c69ac0",
+    credential: "FB8fB/a1u7CM8mvh"
+  },
+  {
+    urls: "turn:global.relay.metered.ca:80",
+    username: "6e0a1496ced0367138c69ac0",
+    credential: "FB8fB/a1u7CM8mvh"
+  },
+  {
+    urls: "turns:global.relay.metered.ca:5349",
+    username: "6e0a1496ced0367138c69ac0",
+    credential: "FB8fB/a1u7CM8mvh"
+  },
+  {
+    urls: "turns:global.relay.metered.ca:443?transport=tcp",
+    username: "6e0a1496ced0367138c69ac0",
+    credential: "FB8fB/a1u7CM8mvh"
+  }
 ];
+
 
 let ws=null, pc=null, localStream=null, currentFacingMode='environment', sessionCode=null, role=null, heartbeatInterval=null;
 
@@ -787,3 +799,4 @@ checkAutoJoin();
 </script>
 </body>
 </html>
+

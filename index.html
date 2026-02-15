@@ -683,17 +683,73 @@ function waitForICEGathering(conn) {
 function createPeerConnection(forRole) {
 
   const conn = new RTCPeerConnection({
-    iceServers: ICE_SERVERS
+    iceServers: ICE_SERVERS,
+    iceTransportPolicy: "all"
   });
 
   conn.onicecandidate = (event) => {
     if (event.candidate) {
-      ws.send(JSON.stringify({
+      wsSend({
         type: "ice-candidate",
         candidate: event.candidate
-      }));
+      });
     }
   };
+
+  conn.ontrack = (event) => {
+    if (forRole === "laptop" && event.streams[0]) {
+      document.getElementById("remoteVideo").srcObject = event.streams[0];
+      document.getElementById("videoOverlay").classList.add("hidden");
+      document.getElementById("liveBadge").style.display = "flex";
+      setLaptopStatus("success", "✓ Live — video is streaming peer-to-peer.");
+    }
+  };
+
+  conn.onconnectionstatechange = () => {
+    const state = conn.connectionState;
+    console.log("connectionState →", state);
+
+    if (forRole === "laptop") {
+      if (state === "connecting")
+        setLaptopStatus("warn", "Establishing P2P connection…");
+
+      if (state === "connected")
+        setLaptopStatus("success", "✓ Connected — video is streaming.");
+
+      if (state === "disconnected")
+        setLaptopStatus("error", "⚠ Connection lost.");
+
+      if (state === "failed")
+        setLaptopStatus("error", "✗ Connection failed. Try new session.");
+    }
+
+    if (forRole === "mobile") {
+      if (state === "connected")
+        setMobileStatus("success", "✓ Connected — camera is live.");
+
+      if (state === "failed" || state === "disconnected")
+        setMobileStatus("error", "⚠ Lost connection to laptop.");
+    }
+  };
+
+  conn.oniceconnectionstatechange = () => {
+    console.log("ICE State →", conn.iceConnectionState);
+
+    if (forRole === "laptop" && conn.iceConnectionState === "checking") {
+      setLaptopStatus("warn", "Finding network path…");
+    }
+
+    if (forRole === "laptop" && conn.iceConnectionState === "failed") {
+      setLaptopStatus("error", "✗ Network traversal failed.");
+    }
+  };
+
+  conn.onicegatheringstatechange = () => {
+    console.log("iceGatheringState →", conn.iceGatheringState);
+  };
+
+  return conn;
+}
 
   conn.ontrack = (event) => {
     if (forRole === "laptop" && event.streams[0]) {
@@ -818,5 +874,6 @@ checkAutoJoin();
 </script>
 </body>
 </html>
+
 
 

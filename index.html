@@ -681,16 +681,35 @@ function waitForICEGathering(conn) {
 }
 
 function createPeerConnection(forRole) {
-  const conn=new RTCPeerConnection({iceServers:ICE_SERVERS});
-  conn.onicecandidate=(e)=>{if(e.candidate)wsSend({type:'ice-candidate',candidate:e.candidate});};
-  conn.ontrack=(e)=>{
-    if(forRole==='laptop'&&e.streams[0]){
-      document.getElementById('remoteVideo').srcObject=e.streams[0];
-      document.getElementById('videoOverlay').classList.add('hidden');
-      document.getElementById('liveBadge').style.display='flex';
-      setLaptopStatus('success','✓ Live — video is streaming peer-to-peer.');
+
+  const conn = new RTCPeerConnection({
+    iceServers: ICE_SERVERS
+  });
+
+  conn.onicecandidate = (event) => {
+    if (event.candidate) {
+      ws.send(JSON.stringify({
+        type: "ice-candidate",
+        candidate: event.candidate
+      }));
     }
   };
+
+  conn.ontrack = (event) => {
+    if (forRole === "laptop" && event.streams[0]) {
+      document.getElementById("remoteVideo").srcObject = event.streams[0];
+      document.getElementById("videoOverlay").classList.add("hidden");
+      document.getElementById("liveBadge").style.display = "flex";
+      setLaptopStatus("success", "✓ Live — video is streaming peer-to-peer.");
+    }
+  };
+
+  conn.oniceconnectionstatechange = () => {
+    console.log("ICE State:", conn.iceConnectionState);
+  };
+
+  return conn;
+}
   conn.onconnectionstatechange=()=>{
     const s=conn.connectionState;
     console.log(`[PhoneCam] connectionState → ${s}`);
@@ -799,4 +818,5 @@ checkAutoJoin();
 </script>
 </body>
 </html>
+
 

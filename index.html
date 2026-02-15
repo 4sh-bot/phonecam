@@ -551,30 +551,18 @@
 </div>
 <script>
 const ICE_SERVERS = [
-  { urls: "stun:stun.l.google.com:19302" },
-
-  {
-    urls: "turn:global.relay.metered.ca:3478",
-    username: "6e0a1496ced0367138c69ac0",
-    credential: "FB8fB/a1u7CM8mvh"
-  },
-  {
-    urls: "turn:global.relay.metered.ca:80",
-    username: "6e0a1496ced0367138c69ac0",
-    credential: "FB8fB/a1u7CM8mvh"
-  },
-  {
-    urls: "turns:global.relay.metered.ca:5349",
-    username: "6e0a1496ced0367138c69ac0",
-    credential: "FB8fB/a1u7CM8mvh"
-  },
-  {
-    urls: "turns:global.relay.metered.ca:443?transport=tcp",
-    username: "6e0a1496ced0367138c69ac0",
-    credential: "FB8fB/a1u7CM8mvh"
-  }
+  { urls: 'stun:stun.l.google.com:19302' },
+  { urls: 'stun:stun1.l.google.com:19302' },
+  { urls: 'stun:stun2.l.google.com:19302' },
+  { urls: 'stun:stun3.l.google.com:19302' },
+  { urls: 'stun:stun4.l.google.com:19302' },
+  { urls: 'stun:stun.cloudflare.com:3478' },
+  { urls: 'stun:stun.relay.metered.ca:80' },
+  { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+  { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+  { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
+  { urls: 'turns:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
 ];
-
 
 let ws=null, pc=null, localStream=null, currentFacingMode='environment', sessionCode=null, role=null, heartbeatInterval=null;
 
@@ -681,91 +669,16 @@ function waitForICEGathering(conn) {
 }
 
 function createPeerConnection(forRole) {
-
-  const conn = new RTCPeerConnection({
-    iceServers: ICE_SERVERS,
-    iceTransportPolicy: "all"
-  });
-
-  conn.onicecandidate = (event) => {
-    if (event.candidate) {
-      wsSend({
-        type: "ice-candidate",
-        candidate: event.candidate
-      });
+  const conn=new RTCPeerConnection({iceServers:ICE_SERVERS});
+  conn.onicecandidate=(e)=>{if(e.candidate)wsSend({type:'ice-candidate',candidate:e.candidate});};
+  conn.ontrack=(e)=>{
+    if(forRole==='laptop'&&e.streams[0]){
+      document.getElementById('remoteVideo').srcObject=e.streams[0];
+      document.getElementById('videoOverlay').classList.add('hidden');
+      document.getElementById('liveBadge').style.display='flex';
+      setLaptopStatus('success','✓ Live — video is streaming peer-to-peer.');
     }
   };
-
-  conn.ontrack = (event) => {
-    if (forRole === "laptop" && event.streams[0]) {
-      document.getElementById("remoteVideo").srcObject = event.streams[0];
-      document.getElementById("videoOverlay").classList.add("hidden");
-      document.getElementById("liveBadge").style.display = "flex";
-      setLaptopStatus("success", "✓ Live — video is streaming peer-to-peer.");
-    }
-  };
-
-  conn.onconnectionstatechange = () => {
-    const state = conn.connectionState;
-    console.log("connectionState →", state);
-
-    if (forRole === "laptop") {
-      if (state === "connecting")
-        setLaptopStatus("warn", "Establishing P2P connection…");
-
-      if (state === "connected")
-        setLaptopStatus("success", "✓ Connected — video is streaming.");
-
-      if (state === "disconnected")
-        setLaptopStatus("error", "⚠ Connection lost.");
-
-      if (state === "failed")
-        setLaptopStatus("error", "✗ Connection failed. Try new session.");
-    }
-
-    if (forRole === "mobile") {
-      if (state === "connected")
-        setMobileStatus("success", "✓ Connected — camera is live.");
-
-      if (state === "failed" || state === "disconnected")
-        setMobileStatus("error", "⚠ Lost connection to laptop.");
-    }
-  };
-
-  conn.oniceconnectionstatechange = () => {
-    console.log("ICE State →", conn.iceConnectionState);
-
-    if (forRole === "laptop" && conn.iceConnectionState === "checking") {
-      setLaptopStatus("warn", "Finding network path…");
-    }
-
-    if (forRole === "laptop" && conn.iceConnectionState === "failed") {
-      setLaptopStatus("error", "✗ Network traversal failed.");
-    }
-  };
-
-  conn.onicegatheringstatechange = () => {
-    console.log("iceGatheringState →", conn.iceGatheringState);
-  };
-
-  return conn;
-}
-
-  conn.ontrack = (event) => {
-    if (forRole === "laptop" && event.streams[0]) {
-      document.getElementById("remoteVideo").srcObject = event.streams[0];
-      document.getElementById("videoOverlay").classList.add("hidden");
-      document.getElementById("liveBadge").style.display = "flex";
-      setLaptopStatus("success", "✓ Live — video is streaming peer-to-peer.");
-    }
-  };
-
-  conn.oniceconnectionstatechange = () => {
-    console.log("ICE State:", conn.iceConnectionState);
-  };
-
-  return conn;
-}
   conn.onconnectionstatechange=()=>{
     const s=conn.connectionState;
     console.log(`[PhoneCam] connectionState → ${s}`);
@@ -874,6 +787,3 @@ checkAutoJoin();
 </script>
 </body>
 </html>
-
-
-

@@ -115,6 +115,6 @@ wss.on('connection', (ws) => {
   });
 });
 
-httpServer.listen(PORT, () => {
-  console.log(`\n🎥  PhoneCam server running → http://localhost:${PORT}\n`);
+httpServer.listen(PORT, "0.0.0.0", () => {
+  console.log(`🎥 PhoneCam server running on port ${PORT}`);
 });
